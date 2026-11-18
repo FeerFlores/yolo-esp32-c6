@@ -1,185 +1,749 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Monitor de peatones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      color-scheme: dark; font-family: system-ui, sans-serif;
-      --bg: #0b111c; --panel: #141f30; --line: #263a54; --text: #e9f1fb; --muted: #93a9c4;
-      --green: #3ddc84; --yellow: #ffc542; --red: #ff5a5f; --blue: #67b9f2;
+      color-scheme: dark;
+      --bg: #000000;
+      --surface: #111111;
+      --surface-2: #0a0a0a;
+      --surface-3: #0f0f10;
+      --line: rgba(255, 255, 255, 0.06);
+      --line-2: rgba(255, 255, 255, 0.10);
+      --text: #f5f5f5;
+      --muted: #909099;
+      --soft: #c9c9cf;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --blue: #60a5fa;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      --radius-xl: 20px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0 auto; max-width: 1600px; padding: 20px; background: var(--bg); color: var(--text); }
-    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    h1 { margin: 0; font-size: clamp(1.3rem, 2.6vw, 1.9rem); }
-    h2 { margin: 0 0 10px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .chip { border-radius: 999px; padding: 7px 12px; font-size: .85rem; font-weight: 700; background: #3a1f27; color: #ffb3b6; }
-    .chip.ok { background: #143a2c; color: #8aebbc; }
-    .button { border-radius: 999px; padding: 7px 14px; font-weight: 700; color: #08200f; background: var(--green); text-decoration: none; font-size: .85rem; }
-    .grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr); gap: 16px; }
-    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
-    .side { display: flex; flex-direction: column; gap: 16px; }
 
-    /* Video + cajas */
-    .video { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #060a12; border-radius: 10px; overflow: hidden; }
-    .video img, .video canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-    .video .overlay-msg { position: absolute; inset: 0; display: none; place-items: center; background: rgba(6,10,18,.72); font-weight: 700; font-size: 1.2rem; text-align: center; padding: 20px; }
-    .video.stale .overlay-msg { display: grid; }
-    .video-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: .85rem; color: var(--muted); }
-    .video-meta b { color: var(--text); font-variant-numeric: tabular-nums; }
+    * {
+      box-sizing: border-box;
+    }
 
-    /* Estado peatonal */
-    .walk { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
-    .lamps { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #070b12; border-radius: 12px; }
-    .lamp { width: 38px; height: 38px; border-radius: 50%; background: #1d2633; transition: background .15s, box-shadow .15s; }
-    .lamp.red.on { background: var(--red); box-shadow: 0 0 18px var(--red); }
-    .lamp.yellow.on { background: var(--yellow); box-shadow: 0 0 18px var(--yellow); }
-    .lamp.green.on { background: var(--green); box-shadow: 0 0 18px var(--green); }
-    .walk-word { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 900; line-height: 1; }
-    .walk-word.go { color: var(--green); } .walk-word.wait { color: var(--yellow); } .walk-word.stop { color: var(--red); } .walk-word.unknown { color: var(--muted); }
-    .reason { margin-top: 8px; color: var(--muted); font-size: .9rem; }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Manrope", system-ui, sans-serif;
+    }
 
-    .big { font-size: 2.4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-    .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: .9rem; }
-    .kv span { color: var(--muted); }
-    .kv b { font-variant-numeric: tabular-nums; text-align: right; }
-    .warn { color: var(--yellow) !important; } .bad { color: var(--red) !important; }
+    body {
+      min-height: 100vh;
+    }
 
-    .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-    canvas.chart { width: 100%; height: 150px; display: block; }
-    .note { margin: 12px 0 0; font-size: .8rem; color: var(--muted); }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
 
-    @media (max-width: 1100px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .side { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
-    @media (max-width: 560px) { body { padding: 12px; } .charts { grid-template-columns: 1fr; } }
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(1.25rem, 2vw, 1.7rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--soft);
+      font-size: 0.83rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .chip::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #5c5c61;
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.02);
+    }
+
+    .chip.ok::before {
+      background: var(--green);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line-2);
+      background: #f5f5f5;
+      color: #090909;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+      gap: 20px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 18px 0 18px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .card-subtitle {
+      margin: 5px 0 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .card-body {
+      padding: 18px;
+    }
+
+    .video-wrap {
+      padding: 18px;
+    }
+
+    .video {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .video img,
+    .video canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .video .overlay-msg {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.72);
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 20px;
+      z-index: 4;
+    }
+
+    .video.stale .overlay-msg {
+      display: grid;
+    }
+
+    .video-badges {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.70);
+      color: var(--text);
+      font-size: 0.76rem;
+      font-weight: 800;
+      backdrop-filter: blur(6px);
+    }
+
+    .metrics-inline {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .metric-inline {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+    }
+
+    .metric-inline .label {
+      font-size: 0.76rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-inline .value {
+      margin-top: 8px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-box {
+      padding: 16px;
+      border-radius: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+    }
+
+    .stat-box .label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-box .value {
+      margin-top: 10px;
+      font-size: 1.9rem;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-box .foot {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .walk {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .lamps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      background: #020202;
+      border: 1px solid var(--line);
+    }
+
+    .lamp {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #191919;
+      transition: 0.18s ease;
+    }
+
+    .lamp.red.on {
+      background: var(--red);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.42);
+    }
+
+    .lamp.yellow.on {
+      background: var(--yellow);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.42);
+    }
+
+    .lamp.green.on {
+      background: var(--green);
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.42);
+    }
+
+    .walk-word {
+      font-size: clamp(1.8rem, 3vw, 2.45rem);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      margin: 0;
+    }
+
+    .walk-word.go {
+      color: var(--green);
+    }
+
+    .walk-word.wait {
+      color: var(--yellow);
+    }
+
+    .walk-word.stop {
+      color: var(--red);
+    }
+
+    .walk-word.unknown {
+      color: var(--soft);
+    }
+
+    .reason {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+    }
+
+    .info-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+    }
+
+    .info-row .k {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .info-row .v {
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .warn {
+      color: var(--yellow) !important;
+    }
+
+    .bad {
+      color: var(--red) !important;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .chart-card h3 {
+      margin: 0 0 14px 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    canvas.chart {
+      width: 100%;
+      height: 150px;
+      display: block;
+    }
+
+    .note {
+      margin: 16px 2px 0 2px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1180px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .charts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding: 14px;
+      }
+
+      .topbar {
+        padding: 16px;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .metrics-inline,
+      .grid-2,
+      .charts {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
-<body>
-  <header>
-    <div><h1>Monitor de peatones</h1></div>
-    <div class="chips">
-      <span id="chip-panel" class="chip">Panel desconectado</span>
-      <span id="chip-cam" class="chip">Cámara</span>
-      <span id="chip-esp" class="chip">ESP32-C6</span>
-      <a class="button" href="/report.csv">Descargar CSV</a>
-    </div>
-  </header>
 
-  <main class="grid">
-    <section class="panel">
-      <div id="video" class="video stale">
-        <img id="stream" alt="Cámara en vivo">
-        <canvas id="boxes"></canvas>
-        <div class="overlay-msg" id="video-msg">Conectando con la cámara…</div>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1 class="title">Monitoreo de peatones</h1>
       </div>
-      <div class="video-meta">
-        <div>Video <b id="m-fps">--</b> fps</div>
-        <div>Cámara <b id="m-camfps">--</b> fps</div>
-        <div>Inferencia <b id="m-inf">--</b> ms</div>
-        <div>Captura→publicación <b id="m-pipe">--</b> ms</div>
-        <div>ESP32 <b id="m-rtt">--</b> ms</div>
-        <div>Resolución <b id="m-res">--</b></div>
+
+      <div class="actions">
+        <span id="chip-panel" class="chip">Panel desconectado</span>
+        <span id="chip-cam" class="chip">Cámara</span>
+        <span id="chip-esp" class="chip">ESP32-C6</span>
+        <a class="btn" href="/report.csv">Descargar CSV</a>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="stack">
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Video en vivo</h2>
+              <p class="card-subtitle">Transmisión de la cámara y detecciones en tiempo real</p>
+            </div>
+          </div>
+
+          <div class="video-wrap">
+            <div id="video" class="video stale">
+              <div class="video-badges">
+                <div class="badge">Personas: <span id="raw-badge" style="margin-left:6px">0</span></div>
+                <div class="badge">FPS: <span id="m-fps-badge" style="margin-left:6px">--</span></div>
+                <div class="badge">Inferencia: <span id="m-inf-badge" style="margin-left:6px">--</span></div>
+              </div>
+              <img id="stream" alt="Cámara en vivo">
+              <canvas id="boxes"></canvas>
+              <div class="overlay-msg" id="video-msg">Conectando con la cámara…</div>
+            </div>
+
+            <div class="metrics-inline">
+              <div class="metric-inline">
+                <div class="label">Captura → publicación</div>
+                <div class="value" id="m-pipe">--</div>
+              </div>
+              <div class="metric-inline">
+                <div class="label">Latencia ESP32</div>
+                <div class="value" id="m-rtt">--</div>
+              </div>
+              <div class="metric-inline">
+                <div class="label">Resolución</div>
+                <div class="value" id="m-res">--</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Detección</h2>
+              <p class="card-subtitle">Resumen del fotograma actual y conteo enviado al dispositivo</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div class="stat-box">
+                <div class="label">Personas confirmadas</div>
+                <div class="value" id="persons">0</div>
+                <div class="foot">Estado actual del pipeline</div>
+              </div>
+              <div class="stat-box">
+                <div class="label">Confianza máxima</div>
+                <div class="value" id="confidence">0%</div>
+                <div class="foot">Detección más fuerte</div>
+              </div>
+            </div>
+
+            <div class="metrics-inline" style="margin-top:12px;">
+              <div class="metric-inline">
+                <div class="label">En este fotograma</div>
+                <div class="value" id="raw">0</div>
+              </div>
+              <div class="metric-inline">
+                <div class="label">Enviado al ESP32</div>
+                <div class="value" id="confirmed">0</div>
+              </div>
+              <div class="metric-inline">
+                <div class="label">FPS de cámara</div>
+                <div class="value" id="m-camfps">--</div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <aside class="stack">
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Estado peatonal</h2>
+              <p class="card-subtitle">Estado reportado por el semáforo I²C</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="walk">
+              <div class="lamps">
+                <div id="l-red" class="lamp red"></div>
+                <div id="l-yellow" class="lamp yellow"></div>
+                <div id="l-green" class="lamp green"></div>
+              </div>
+              <div>
+                <div id="walk-word" class="walk-word unknown">SIN DATOS</div>
+                <div id="reason" class="reason">Esperando datos…</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">ESP32-C6</h2>
+              <p class="card-subtitle">Información de conexión y mediciones del dispositivo</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="info-list">
+              <div class="info-row"><span class="k">IP</span><span class="v" id="ip">--</span></div>
+              <div class="info-row"><span class="k">Enlace YOLO</span><span class="v" id="yolo">--</span></div>
+              <div class="info-row"><span class="k">Botón</span><span class="v" id="button">--</span></div>
+              <div class="info-row"><span class="k">CO₂</span><span class="v" id="co2">--</span></div>
+              <div class="info-row"><span class="k">Temperatura</span><span class="v" id="temperature">--</span></div>
+              <div class="info-row"><span class="k">Humedad</span><span class="v" id="humidity">--</span></div>
+              <div class="info-row"><span class="k">Luz</span><span class="v" id="light">--</span></div>
+              <div class="info-row"><span class="k">Errores de red</span><span class="v" id="errors">0</span></div>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </main>
+
+    <section class="charts">
+      <div class="chart-card">
+        <h3>Personas</h3><canvas class="chart" id="c-persons"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>CO₂ (ppm)</h3><canvas class="chart" id="c-co2"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Temperatura (°C)</h3><canvas class="chart" id="c-temp"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Luz (ADC)</h3><canvas class="chart" id="c-light"></canvas>
       </div>
     </section>
 
-    <div class="side">
-      <section class="panel">
-        <h2>Estado peatonal</h2>
-        <div class="walk">
-          <div class="lamps"><div id="l-red" class="lamp red"></div><div id="l-yellow" class="lamp yellow"></div><div id="l-green" class="lamp green"></div></div>
-          <div><div id="walk-word" class="walk-word unknown">SIN DATOS</div><div id="reason" class="reason">Esperando datos…</div></div>
-        </div>
-      </section>
-      <section class="panel">
-        <h2>Detección</h2>
-        <div class="big" id="persons">0</div>
-        <div class="kv" style="margin-top:10px">
-          <span>En este fotograma</span><b id="raw">0</b>
-          <span>Confianza máx.</span><b id="confidence">0%</b>
-          <span>Enviado al ESP32</span><b id="confirmed">0</b>
-        </div>
-      </section>
-      <section class="panel">
-        <h2>ESP32-C6</h2>
-        <div class="kv">
-          <span>IP</span><b id="ip">--</b>
-          <span>Enlace YOLO</span><b id="yolo">--</b>
-          <span>Botón</span><b id="button">--</b>
-          <span>CO₂</span><b id="co2">--</b>
-          <span>Temperatura</span><b id="temperature">--</b>
-          <span>Humedad</span><b id="humidity">--</b>
-          <span>Luz</span><b id="light">--</b>
-          <span>Errores de red</span><b id="errors">0</b>
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <section class="charts">
-    <div class="panel"><h2>Personas</h2><canvas class="chart" id="c-persons"></canvas></div>
-    <div class="panel"><h2>CO₂ (ppm)</h2><canvas class="chart" id="c-co2"></canvas></div>
-    <div class="panel"><h2>Temperatura (°C)</h2><canvas class="chart" id="c-temp"></canvas></div>
-    <div class="panel"><h2>Luz (ADC)</h2><canvas class="chart" id="c-light"></canvas></div>
-  </section>
-  <p class="note">Video y estado se empujan desde el servidor en cuanto YOLO termina cada fotograma. Gráficas: últimos 10 min; el CSV guarda una fila por segundo.</p>
+    <p class="note">El dashboard recibe eventos en vivo desde <code>/events</code>, el video desde
+      <code>/stream.mjpg</code> y el historial desde <code>/api/history</code>. Esta versión prioriza una apariencia más
+      oscura, sobria y minimalista.
+    </p>
+  </div>
 
   <script>
     const $ = id => document.getElementById(id);
     const fmt = (v, suffix = '') => v === null || v === undefined ? '--' : `${v}${suffix}`;
-    const setText = (id, text) => { const el = $(id); if (el.textContent !== String(text)) el.textContent = text; };
-    const chip = (id, ok, text) => { setText(id, text); $(id).classList.toggle('ok', ok); };
+    const setText = (id, text) => {
+      const el = $(id);
+      if (el && el.textContent !== String(text)) el.textContent = text;
+    };
+    const chip = (id, ok, text) => {
+      setText(id, text);
+      const el = $(id);
+      if (el) el.classList.toggle('ok', ok);
+    };
 
     let status = null;
     let lastFrameSeq = -1, lastFrameAt = 0;
     let rows = [];
 
-    /* ---------- Video MJPEG con reconexión ---------- */
     const img = $('stream');
     function connectStream() { img.src = `/stream.mjpg?t=${Date.now()}`; }
     img.onerror = () => setTimeout(connectStream, 1000);
     connectStream();
 
-    /* ---------- Cajas dibujadas a resolución de pantalla ---------- */
     const boxCanvas = $('boxes');
     function drawBoxes() {
       const ratio = window.devicePixelRatio || 1;
       const w = boxCanvas.clientWidth, h = boxCanvas.clientHeight;
       if (boxCanvas.width !== Math.round(w * ratio) || boxCanvas.height !== Math.round(h * ratio)) {
-        boxCanvas.width = Math.round(w * ratio); boxCanvas.height = Math.round(h * ratio);
+        boxCanvas.width = Math.round(w * ratio);
+        boxCanvas.height = Math.round(h * ratio);
       }
       const ctx = boxCanvas.getContext('2d');
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, w, h);
       if (!status || !status.boxes) return;
-      // Área real de la imagen dentro del contenedor (object-fit: contain).
-      const [fw, fh] = status.frame_size[0] ? status.frame_size : [4, 3];
+
+      const [fw, fh] = status.frame_size && status.frame_size[0] ? status.frame_size : [4, 3];
       const scale = Math.min(w / fw, h / fh);
       const iw = fw * scale, ih = fh * scale, ox = (w - iw) / 2, oy = (h - ih) / 2;
-      const color = status.confirmed_persons > 0 ? '#3ddc84' : '#ffc542';
-      ctx.lineWidth = 2.5; ctx.font = '600 14px system-ui'; ctx.textBaseline = 'top';
+      const color = status.confirmed_persons > 0 ? '#22c55e' : '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.font = '600 13px Manrope, system-ui';
+      ctx.textBaseline = 'top';
+
       for (const b of status.boxes) {
-        const x = ox + b.x1 * iw, y = oy + b.y1 * ih, bw = (b.x2 - b.x1) * iw, bh = (b.y2 - b.y1) * ih;
-        ctx.strokeStyle = color; ctx.strokeRect(x, y, bw, bh);
+        const x = ox + b.x1 * iw;
+        const y = oy + b.y1 * ih;
+        const bw = (b.x2 - b.x1) * iw;
+        const bh = (b.y2 - b.y1) * ih;
+        ctx.strokeStyle = color;
+        ctx.strokeRect(x, y, bw, bh);
         const label = `persona ${Math.round(b.conf * 100)}%`;
-        const tw = ctx.measureText(label).width + 10;
-        const ly = y - 20 >= oy ? y - 20 : y;
-        ctx.fillStyle = color; ctx.fillRect(x - 1, ly, tw, 20);
-        ctx.fillStyle = '#06110a'; ctx.fillText(label, x + 4, ly + 3);
+        const tw = ctx.measureText(label).width + 12;
+        const ly = y - 22 >= oy ? y - 22 : y;
+        ctx.fillStyle = color;
+        ctx.fillRect(x - 1, ly, tw, 20);
+        ctx.fillStyle = '#050505';
+        ctx.fillText(label, x + 5, ly + 3);
       }
     }
+
     new ResizeObserver(() => { drawBoxes(); drawCharts(); }).observe(document.body);
 
-    /* ---------- Estado peatonal ---------- */
     function walkState(s) {
       const d = s.device || {};
       if (!s.esp_connected) return ['unknown', 'SIN DATOS', '', 'Sin conexión con el ESP32-C6'];
       const t = d.traffic;
       if (t === 'ERROR' || !t) return ['unknown', 'SIN DATOS', '', 'Semáforo I²C con error o ausente'];
-      if (t === 'VERDE') return ['go', 'PASE', 'green', 'Ciclo normal'];
-      if (t === 'AMARILLO') return ['wait', 'ESPERE', 'yellow', 'Ciclo normal: cambio a rojo'];
+      if (t === 'VERDE' || t === 'GREEN') return ['go', 'PASE', 'green', 'Ciclo normal'];
+      if (t === 'AMARILLO' || t === 'YELLOW') return ['wait', 'ESPERE', 'yellow', 'Ciclo normal: cambio a rojo'];
       return ['stop', 'NO PASE', 'red', 'Ciclo normal'];
     }
 
@@ -193,16 +757,19 @@
 
       setText('persons', s.confirmed_persons);
       setText('raw', s.persons);
+      setText('raw-badge', s.persons);
       setText('confidence', `${Math.round(s.confidence * 100)}%`);
       setText('confirmed', s.esp_connected && d.person_count !== undefined ? d.person_count : '--');
 
       setText('m-fps', s.fps.toFixed(1));
+      setText('m-fps-badge', s.fps.toFixed(1));
       setText('m-camfps', s.camera_fps.toFixed(1));
       setText('m-inf', s.inference_ms.toFixed(0));
-      setText('m-pipe', s.pipeline_ms.toFixed(0));
-      setText('m-rtt', s.esp_rtt_ms === null ? '--' : s.esp_rtt_ms.toFixed(0));
+      setText('m-inf-badge', `${s.inference_ms.toFixed(0)} ms`);
+      setText('m-pipe', `${s.pipeline_ms.toFixed(0)} ms`);
+      setText('m-rtt', s.esp_rtt_ms === null ? '--' : `${s.esp_rtt_ms.toFixed(0)} ms`);
       $('m-rtt').classList.toggle('warn', s.esp_rtt_ms > 250);
-      setText('m-res', s.frame_size[0] ? `${s.frame_size[0]}×${s.frame_size[1]}` : '--');
+      setText('m-res', s.frame_size && s.frame_size[0] ? `${s.frame_size[0]}×${s.frame_size[1]}` : '--');
 
       setText('ip', d.ip || s.esp_ip);
       setText('yolo', s.esp_connected ? (d.yolo_online ? 'Activo' : 'Sin enlace') : '--');
@@ -216,23 +783,27 @@
       chip('chip-esp', s.esp_connected, s.esp_connected ? 'ESP32 conectado' : 'ESP32 sin conexión');
       chip('chip-cam', s.camera === 'activa', `Cámara ${s.camera}`);
 
-      if (s.frame_seq !== lastFrameSeq) { lastFrameSeq = s.frame_seq; lastFrameAt = performance.now(); }
+      if (s.frame_seq !== lastFrameSeq) {
+        lastFrameSeq = s.frame_seq;
+        lastFrameAt = performance.now();
+      }
       drawBoxes();
     }
 
-    /* Aviso si el video se congela (sin fotogramas nuevos > 1.5 s). */
     setInterval(() => {
       const stale = !lastFrameAt || performance.now() - lastFrameAt > 1500;
       $('video').classList.toggle('stale', stale);
       if (stale) setText('video-msg', status ? `Sin video nuevo · cámara ${status.camera}` : 'Conectando con la cámara…');
     }, 250);
 
-    /* ---------- Eventos del servidor (SSE) ---------- */
     function connectEvents() {
       const es = new EventSource('/events');
       es.onopen = () => chip('chip-panel', true, 'Panel en vivo');
       es.onerror = () => chip('chip-panel', false, 'Panel reconectando…');
-      es.addEventListener('status', e => { status = JSON.parse(e.data); render(status); });
+      es.addEventListener('status', e => {
+        status = JSON.parse(e.data);
+        render(status);
+      });
       es.addEventListener('rows', e => {
         rows.push(...JSON.parse(e.data));
         if (rows.length > 600) rows = rows.slice(-600);
@@ -240,51 +811,86 @@
       });
     }
 
-    /* ---------- Gráficas (solo se redibujan con datos nuevos) ---------- */
     function drawChart(canvas, key, color, unit) {
       const ctx = canvas.getContext('2d');
       const ratio = window.devicePixelRatio || 1;
       const w = canvas.clientWidth, h = canvas.clientHeight;
-      canvas.width = w * ratio; canvas.height = h * ratio;
+      canvas.width = w * ratio;
+      canvas.height = h * ratio;
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
       const data = [];
-      for (const r of rows) { const v = r[key]; if (Number.isFinite(v)) data.push({v, t: r.fecha_hora}); }
-      ctx.fillStyle = '#93a9c4'; ctx.font = '12px system-ui';
-      if (!data.length) { ctx.fillText('Esperando lecturas…', 8, h / 2); return; }
+      for (const r of rows) {
+        const v = r[key];
+        if (Number.isFinite(v)) data.push({ v, t: r.fecha_hora });
+      }
+
+      ctx.fillStyle = '#8e8e98';
+      ctx.font = '12px Manrope, system-ui';
+      if (!data.length) {
+        ctx.fillText('Esperando lecturas…', 8, h / 2);
+        return;
+      }
+
       let min = Infinity, max = -Infinity;
-      for (const p of data) { if (p.v < min) min = p.v; if (p.v > max) max = p.v; }
+      for (const p of data) {
+        if (p.v < min) min = p.v;
+        if (p.v > max) max = p.v;
+      }
       if (min === max) { min -= 1; max += 1; }
+
       const x = i => 8 + i * (w - 16) / Math.max(1, data.length - 1);
       const y = v => h - 22 - (v - min) * (h - 46) / (max - min);
-      ctx.strokeStyle = '#263a54'; ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) { const gy = 24 + i * (h - 46) / 2; ctx.beginPath(); ctx.moveTo(8, gy); ctx.lineTo(w - 8, gy); ctx.stroke(); }
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const gy = 24 + i * (h - 46) / 2;
+        ctx.beginPath();
+        ctx.moveTo(8, gy);
+        ctx.lineTo(w - 8, gy);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
       data.forEach((p, i) => i ? ctx.lineTo(x(i), y(p.v)) : ctx.moveTo(x(i), y(p.v)));
       ctx.stroke();
-      ctx.fillStyle = '#e9f1fb'; ctx.font = '600 13px system-ui';
+
+      ctx.fillStyle = '#f4f4f5';
+      ctx.font = '700 13px Manrope, system-ui';
       ctx.fillText(`${data.at(-1).v}${unit}`, 8, 14);
-      ctx.fillStyle = '#93a9c4'; ctx.font = '11px system-ui';
+      ctx.fillStyle = '#8e8e98';
+      ctx.font = '11px Manrope, system-ui';
       ctx.fillText(data[0].t.slice(11, 19), 8, h - 5);
       ctx.fillText(data.at(-1).t.slice(11, 19), Math.max(8, w - 56), h - 5);
     }
+
     let chartQueued = false;
     function drawCharts() {
       if (chartQueued) return;
       chartQueued = true;
       requestAnimationFrame(() => {
         chartQueued = false;
-        drawChart($('c-persons'), 'personas', '#3ddc84', '');
-        drawChart($('c-co2'), 'co2_ppm', '#67b9f2', ' ppm');
-        drawChart($('c-temp'), 'temperatura_c', '#ffa876', ' °C');
-        drawChart($('c-light'), 'luz_adc', '#f7d57a', '');
+        drawChart($('c-persons'), 'personas', '#22c55e', '');
+        drawChart($('c-co2'), 'co2_ppm', '#60a5fa', ' ppm');
+        drawChart($('c-temp'), 'temperatura_c', '#f5f5f5', ' °C');
+        drawChart($('c-light'), 'luz_adc', '#f59e0b', '');
       });
     }
 
-    // Historial inicial una sola vez; después llegan solo las filas nuevas por SSE.
-    fetch('/api/history', {cache: 'no-store'})
-      .then(r => r.json()).then(h => { rows = h.concat(rows).slice(-600); drawCharts(); })
-      .catch(() => {})
+    fetch('/api/history', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(h => {
+        rows = h.concat(rows).slice(-600);
+        drawCharts();
+      })
+      .catch(() => { })
       .finally(connectEvents);
   </script>
 </body>
+
 </html>
