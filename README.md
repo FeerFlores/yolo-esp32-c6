@@ -238,3 +238,93 @@ requests.get(
 El sistema incorporará lógica para evitar
 enviar solicitudes continuamente mientras
 una misma persona permanece frente a la cámara.
+
+## 9. Integración ESP32-C6 + YOLO + semáforo peatonal
+
+La integración nueva está en `firmware/yolo_bridge/yolo_bridge.ino` y
+`yolo/dashboard.py`. Los ejemplos anteriores de ESP32-S3 siguen disponibles.
+
+### Hardware y red
+
+El ESP32-C6 usa SDA GPIO6 y SCL GPIO7 para los módulos I²C del ejemplo
+`firmware/sensor/sensor.ino`:
+
+| Módulo | Dirección | Uso |
+|---|---|---|
+| Botón | `0x30` | Estado mostrado en la telemetría |
+| Sensor de luz GT36537 | `0x26` | Lectura para el reporte |
+| SCD41 | `0x62` | CO₂, temperatura y humedad |
+| OLED SSD1306 | `0x3C` | IP, lecturas y estado |
+| Semáforo UE0183 | `0x36` | Rojo, amarillo y verde |
+
+El ESP32-C6 y la computadora deben estar en la misma red Wi-Fi. Antes de
+compilar, revisa `WIFI_SSID` y `WIFI_PASSWORD` al inicio del firmware.
+La IP se asigna por DHCP: aparece en la OLED y en el monitor serie a
+115200 baudios. Si cambia, usa el valor nuevo en `--esp-ip`.
+El ESP32-C6 recibe `POST /detect` en su puerto 80. El panel web de la
+computadora usa el puerto indicado por `--web-port` (8000 u 8001); son
+servidores y puertos distintos.
+
+Compilar con Arduino CLI y las bibliotecas `DevLabDDP`, `DevLab_Interface`,
+`Sensirion I2C SCD4x`, `Adafruit GFX Library` y `Adafruit SSD1306`:
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32c6 firmware/yolo_bridge
+arduino-cli upload --fqbn esp32:esp32:esp32c6 -p /dev/ttyACM0 firmware/yolo_bridge
+```
+
+Sustituye `/dev/ttyACM0` por el puerto real del ESP32-C6. Al arrancar,
+`GET http://IP_DEL_ESP/status` entrega JSON con sensores, semáforo,
+personas e IP. YOLO envía al menos cada segundo `POST /detect` con los campos
+`count` y `confidence` y lee `/status` para el panel y el reporte.
+
+En el monitor serie a 115200 baudios, el firmware correcto comienza con
+`=== YOLO BRIDGE ESP32-C6 ===`, muestra el SSID y luego `Wi-Fi: <IP>`.
+Si aparece `UNIT DevLab I2C Monitor` y el semáforo recorre
+`RED → YELLOW → GREEN → OFF`, sigue cargado `firmware/sensor/sensor.ino`:
+ese ejemplo prueba sensores pero no conecta Wi-Fi. Selecciona y carga
+`firmware/yolo_bridge/yolo_bridge.ino` en el ESP32-C6. Si el firmware
+correcto informa `Wi-Fi sin conexion`, revisa `WIFI_SSID`,
+`WIFI_PASSWORD` y que el punto de acceso sea de 2,4 GHz.
+
+### Regla del semáforo
+
+- El semáforo peatonal sigue el ciclo normal: rojo 5 s (**no pase**),
+  verde 5 s (**pase**) y amarillo 2 s (**espere**).
+- YOLO registra los peatones y el botón se muestra en la telemetría;
+  ninguno de los dos cambia el color del semáforo.
+- Si se pierde Wi-Fi o YOLO deja de enviar datos, el ciclo continúa.
+  El panel indica **sin datos** cuando no puede consultar el semáforo.
+  Un fallo de comunicación con el módulo I²C se muestra como error.
+
+Este prototipo controla el semáforo peatonal UE0183, no un cruce vial real.
+
+### Iniciar cámara, gráficas y reporte
+
+Desde `yolo`, usa el entorno virtual y la IP que muestra la OLED:
+Sustituye `IP_DEL_ESP32_C6` por una dirección numérica real; no escribas
+ese texto literalmente. `192.168.15.123` es la IP de la computadora en este
+ejemplo, por lo que no sirve como valor de `--esp-ip`.
+
+```bash
+source venv/bin/activate
+unset PYTHONPATH
+python -m pip install -r requirements.txt
+python dashboard.py --esp-ip IP_DEL_ESP32_C6 --web-host 0.0.0.0
+```
+
+El modelo `yolo26n.pt` debe estar en `yolo/`. Desde otro equipo de la misma
+red, abre `http://IP_DE_LA_COMPUTADORA:8000`; por ejemplo, si la computadora
+tiene `192.168.15.123`, abre `http://192.168.15.123:8000`. Allí aparecen
+la cámara con detecciones, estado del semáforo, IP, sensores y gráficas
+de los últimos 10 minutos. **Descargar reporte CSV** entrega todas las lecturas de la
+sesión. El archivo también se guarda en `yolo/reportes/` cada segundo.
+Pulsa Ctrl+C para detener YOLO; el ESP32-C6 mantiene el ciclo del semáforo.
+La cámara predeterminada es `/dev/video0`, a 320 × 240 y 7 FPS, igual que
+`yolo/main.py`. Puedes cambiarla con `--camera /dev/video5` o ajustar
+los FPS con `--camera-fps 7`. Cierra `main.py` antes de iniciar el panel
+para que ambos procesos no intenten usar la misma cámara.
+Si el puerto 8000 está ocupado, cierra el panel anterior o añade
+`--web-port 8001` y abre `http://IP_DE_LA_COMPUTADORA:8001`.
+Si la cámara no abre, cierra `main.py` y otros paneles que puedan usarla;
+comprueba la ruta con `ls /dev/video*` y, si hace falta, usa `--camera /dev/videoN`.

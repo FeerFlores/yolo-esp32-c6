@@ -3,7 +3,7 @@ import time
 import requests
 from ultralytics import YOLO
 
-CAMERA = "/dev/video5"
+CAMERA = "/dev/video0"
 
 WIDTH = 320
 HEIGHT = 240
@@ -13,7 +13,7 @@ MODEL_PATH = "yolo26n.pt"
 CONFIDENCE = 0.35
 IMAGE_SIZE = 320
 
-ESP32_IP = "192.168.15.130"
+ESP32_IP = "192.168.15.129"
 ESP32_URL = f"http://{ESP32_IP}/pulse"
 
 # Confirmar deteccion en 2 fotogramas

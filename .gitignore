@@ -5,6 +5,7 @@
 
 .venv/
 venv/
+reportes/
 env/
 ENV/
 

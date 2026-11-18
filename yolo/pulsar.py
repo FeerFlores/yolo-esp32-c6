@@ -9,7 +9,7 @@ import cv2
 import requests
 from ultralytics import YOLO
 
-CAMERA = "/dev/video5"
+CAMERA = "/dev/video0"
 WIDTH, HEIGHT, FPS = 320, 240, 7
 MODEL_PATH = "yolo26n.pt"
 CONFIDENCE = 0.35
